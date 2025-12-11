@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, CheckCircle, AlertTriangle, ArrowRight, Download, Volume2, Globe, Languages } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertTriangle, ArrowRight, Download, Volume2, Globe, Languages, Utensils } from 'lucide-react';
 import { analyzeDocument, playSmartTTS } from '../services/geminiService';
-import { DocumentAnalysisResult } from '../types';
+import { DocumentAnalysisResult, StructuredOutput } from '../types';
 import LanguageSelector from './LanguageSelector';
 import { SUPPORTED_LANGUAGES } from '../constants';
 
@@ -49,6 +49,60 @@ const DocumentView: React.FC = () => {
       element.download = "translated_document.txt";
       document.body.appendChild(element);
       element.click();
+  };
+
+  // --- RENDERERS ---
+
+  const renderStructuredMenu = (data: StructuredOutput) => {
+    return (
+        <div className="space-y-6 mt-6">
+            <div className="flex items-center gap-2 mb-4 bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                <div className="bg-amber-500/20 p-2 rounded-lg">
+                  <Utensils className="text-amber-400" size={20} />
+                </div>
+                <div>
+                   <h2 className="text-lg font-bold text-white tracking-tight">{data.title || "Menu Translation"}</h2>
+                   <p className="text-xs text-slate-400">Structured View</p>
+                </div>
+            </div>
+            
+            {data.sections.map((section, idx) => (
+                <div key={idx} className="bg-slate-900/50 rounded-xl overflow-hidden border border-slate-800">
+                    <div className="bg-slate-800/80 px-4 py-3 border-b border-slate-700/50">
+                        <h3 className="text-amber-300 font-bold uppercase text-sm tracking-wider">{section.title}</h3>
+                    </div>
+                    <div className="divide-y divide-slate-800">
+                        {section.items.map((item, itemIdx) => (
+                            <div key={itemIdx} className="p-4 hover:bg-slate-800/80 transition-colors">
+                                <div className="flex justify-between items-start mb-1">
+                                    <div className="flex-1 mr-4">
+                                      <p className="text-white font-semibold text-base">{item.label}</p>
+                                      {item.original && (
+                                          <p className="text-slate-500 text-xs italic mb-1">{item.original}</p>
+                                      )}
+                                      {item.description && (
+                                          <p className="text-slate-400 text-sm leading-snug">{item.description}</p>
+                                      )}
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                        <span className="block bg-slate-950 px-2 py-1 rounded text-cyan-400 font-mono font-bold text-sm border border-slate-800">
+                                            {item.value}
+                                        </span>
+                                        <button 
+                                          onClick={() => playSmartTTS(item.label, targetLang)}
+                                          className="mt-2 text-slate-500 hover:text-white inline-block"
+                                        >
+                                            <Volume2 size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
   };
 
   return (
@@ -146,6 +200,11 @@ const DocumentView: React.FC = () => {
               </div>
           </div>
 
+          {/* Structured Menu View (If available) */}
+          {result.structuredOutput && (result.structuredOutput.type === 'MENU' || result.structuredOutput.type === 'TABLE') && (
+               renderStructuredMenu(result.structuredOutput)
+          )}
+
           {/* Summary Card */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl relative overflow-hidden">
              <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
@@ -192,24 +251,26 @@ const DocumentView: React.FC = () => {
               </div>
           )}
 
-          {/* Key Sections */}
-          <div className="space-y-4">
-              <h3 className="text-white font-bold text-lg">Key Sections</h3>
-              {result.keySections.map((section, idx) => (
-                  <div key={idx} className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 transition-colors hover:bg-slate-900/80">
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="text-blue-400 font-semibold text-sm">{section.title}</h4>
-                        <button onClick={() => playSmartTTS(section.content, targetLang)} className="text-slate-500 hover:text-blue-400">
-                            <Volume2 size={16} />
-                        </button>
-                      </div>
-                      <p className="text-white text-sm mb-3 font-medium">{section.content}</p>
-                      <div className="bg-slate-800 p-3 rounded-lg border border-slate-700/50">
-                          <p className="text-xs text-slate-400">💡 {section.explanation}</p>
-                      </div>
-                  </div>
-              ))}
-          </div>
+          {/* Key Sections (Hidden if Structured Output is shown to avoid duplication, or keep for extra details?) - keeping for now as they serve different purpose */}
+          {(!result.structuredOutput || result.structuredOutput.type === 'STANDARD') && (
+            <div className="space-y-4">
+                <h3 className="text-white font-bold text-lg">Key Sections</h3>
+                {result.keySections.map((section, idx) => (
+                    <div key={idx} className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 transition-colors hover:bg-slate-900/80">
+                        <div className="flex justify-between items-start mb-2">
+                            <h4 className="text-blue-400 font-semibold text-sm">{section.title}</h4>
+                            <button onClick={() => playSmartTTS(section.content, targetLang)} className="text-slate-500 hover:text-blue-400">
+                                <Volume2 size={16} />
+                            </button>
+                        </div>
+                        <p className="text-white text-sm mb-3 font-medium">{section.content}</p>
+                        <div className="bg-slate-800 p-3 rounded-lg border border-slate-700/50">
+                            <p className="text-xs text-slate-400">💡 {section.explanation}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+          )}
 
           {/* Action Items */}
           {result.actionItems.length > 0 && (

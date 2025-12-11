@@ -15,6 +15,36 @@ const getApiKey = (): string => {
 // Initialize Gemini Client
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+// Shared Schema Definition for Structured Output
+const structuredOutputSchema = {
+    type: Type.OBJECT,
+    properties: {
+        type: { type: Type.STRING, enum: ["MENU", "TABLE", "STANDARD"] },
+        title: { type: Type.STRING },
+        sections: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    title: { type: Type.STRING },
+                    items: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                label: { type: Type.STRING },
+                                value: { type: Type.STRING },
+                                description: { type: Type.STRING },
+                                original: { type: Type.STRING }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
 /**
  * Analyzes an image from the camera (Snapshot)
  */
@@ -23,7 +53,7 @@ export const analyzeCameraImage = async (
   targetLanguage: string = 'English'
 ): Promise<CameraAnalysisResult> => {
   try {
-    const modelId = 'gemini-2.5-flash'; // Fast model for camera interactions
+    const modelId = 'gemini-2.5-flash'; 
 
     // Clean base64 string if it contains data URI prefix
     const data = base64Image.replace(/^data:image\/\w+;base64,/, "");
@@ -39,6 +69,8 @@ export const analyzeCameraImage = async (
         ]
       },
       config: {
+        // Enable thinking to allow the model to reason about visual structure (Menu vs Text)
+        thinkingConfig: { thinkingBudget: 2048 },
         responseMimeType: 'application/json',
         responseSchema: {
           type: Type.OBJECT,
@@ -65,7 +97,8 @@ export const analyzeCameraImage = async (
                 }
             },
             suggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
-            searchQueries: { type: Type.ARRAY, items: { type: Type.STRING } }
+            searchQueries: { type: Type.ARRAY, items: { type: Type.STRING } },
+            structuredOutput: structuredOutputSchema
           }
         }
       }
@@ -104,6 +137,7 @@ export const analyzeDocument = async (
         ]
       },
       config: {
+        thinkingConfig: { thinkingBudget: 2048 },
         responseMimeType: 'application/json',
         responseSchema: {
           type: Type.OBJECT,
@@ -124,7 +158,8 @@ export const analyzeDocument = async (
               }
             },
             warnings: { type: Type.ARRAY, items: { type: Type.STRING } },
-            actionItems: { type: Type.ARRAY, items: { type: Type.STRING } }
+            actionItems: { type: Type.ARRAY, items: { type: Type.STRING } },
+            structuredOutput: structuredOutputSchema
           }
         }
       }

@@ -18,13 +18,11 @@ export const SUPPORTED_LANGUAGES: Language[] = [
 
 export const PROMPTS = {
   CAMERA_ANALYSIS: `
-  Analyze this image. Identify all visible text in any language.
-  For each text element:
-  - Detect source language
-  - Translate to the target language (default to English if not specified)
-  - Identify context (menu, sign, document, etc.)
-  - Provide cultural context if relevant
-  - Explain any idioms or cultural references
+  Analyze this image. 
+  1. Determine the visual structure: Is it a Menu, a Price List, a Schedule, or General Text?
+  2. If it is a Menu or List, extract the data structurally.
+  3. Identify all visible text, detect source language, and translate.
+  4. Provide context and cultural notes.
   
   Format response as valid JSON ONLY:
   {
@@ -37,22 +35,33 @@ export const PROMPTS = {
       "pronunciation": "string"
     }],
     "sceneContext": {
-       "english": "string (description in English)",
-       "translated": "string (description in Target Language)"
+       "english": "string",
+       "translated": "string"
     },
-    "suggestions": ["string (questions to ask the AI about the scene)"],
-    "searchQueries": ["string (google search queries to find/buy the object or related info)"]
+    "suggestions": ["string"],
+    "searchQueries": ["string"],
+    "structuredOutput": {
+       "type": "MENU" | "TABLE" | "STANDARD",
+       "title": "string (e.g. Restaurant Name or Main Title)",
+       "sections": [
+          {
+             "title": "string (e.g. Appetizers, Drinks)",
+             "items": [
+                {
+                   "label": "string (Translated Name)",
+                   "value": "string (Price or Value)",
+                   "description": "string (Brief description or original text if needed)",
+                   "original": "string (Original source text)"
+                }
+             ]
+          }
+       ]
+    }
   }
   `,
   DOCUMENT_ANALYSIS: `
   This is a document image.
-  Provide:
-  1. Detect the source language of the document.
-  2. Full translation to English (or target language)
-  3. Document summary (3-4 sentences)
-  4. Key sections breakdown with explanations
-  5. Important warnings or action items
-  6. Plain language interpretation
+  Analyze its structure and content.
   
   Format as valid JSON ONLY:
   {
@@ -66,7 +75,24 @@ export const PROMPTS = {
       "explanation": "string"
     }],
     "warnings": ["string"],
-    "actionItems": ["string"]
+    "actionItems": ["string"],
+    "structuredOutput": {
+       "type": "MENU" | "TABLE" | "STANDARD",
+       "title": "string",
+       "sections": [
+          {
+             "title": "string",
+             "items": [
+                {
+                   "label": "string",
+                   "value": "string",
+                   "description": "string",
+                   "original": "string"
+                }
+             ]
+          }
+       ]
+    }
   }
   `,
   CONVERSATION_TRANSLATION: (sourceLang: string, targetLang: string, history: string, newInput: string) => `

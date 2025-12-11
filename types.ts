@@ -7,6 +7,24 @@ export interface DetectedText {
   pronunciation?: string;
 }
 
+export interface StructuredItem {
+  label: string; // e.g. "Beef Curry"
+  value: string; // e.g. "980 Yen"
+  description?: string; // e.g. "Spicy beef with rice"
+  original?: string; // e.g. "ビーフカレー"
+}
+
+export interface StructuredSection {
+  title: string; // e.g. "Meals" or "Drinks"
+  items: StructuredItem[];
+}
+
+export interface StructuredOutput {
+  type: 'MENU' | 'TABLE' | 'STANDARD';
+  title?: string;
+  sections: StructuredSection[];
+}
+
 export interface CameraAnalysisResult {
   detectedTexts: DetectedText[];
   sceneContext: {
@@ -15,6 +33,7 @@ export interface CameraAnalysisResult {
   };
   suggestions: string[];
   searchQueries: string[];
+  structuredOutput?: StructuredOutput;
 }
 
 export interface DocumentAnalysisResult {
@@ -29,6 +48,7 @@ export interface DocumentAnalysisResult {
   }[];
   warnings: string[];
   actionItems: string[];
+  structuredOutput?: StructuredOutput;
 }
 
 export interface ChatMessage {

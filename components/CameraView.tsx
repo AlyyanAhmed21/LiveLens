@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { RefreshCw, Zap, Volume2, Mic, Info, X, Languages, Search, ExternalLink } from 'lucide-react';
+import { RefreshCw, Zap, Volume2, Mic, Info, X, Languages, Search, ExternalLink, Utensils, Tag } from 'lucide-react';
 import { analyzeCameraImage, askVoiceQuestion, playSmartTTS } from '../services/geminiService';
-import { CameraAnalysisResult } from '../types';
+import { CameraAnalysisResult, StructuredOutput } from '../types';
 import LanguageSelector from './LanguageSelector';
 import { SUPPORTED_LANGUAGES } from '../constants';
 
@@ -173,6 +173,57 @@ const CameraView: React.FC = () => {
      playSmartTTS(answer, targetLang);
   };
 
+  // --- RENDERERS ---
+
+  const renderStructuredMenu = (data: StructuredOutput) => {
+      return (
+          <div className="space-y-6">
+              <div className="flex items-center gap-2 mb-4">
+                  <div className="bg-amber-500/20 p-2 rounded-lg">
+                    <Utensils className="text-amber-400" size={24} />
+                  </div>
+                  <h2 className="text-xl font-bold text-white tracking-tight">{data.title || "Menu Translation"}</h2>
+              </div>
+              
+              {data.sections.map((section, idx) => (
+                  <div key={idx} className="bg-slate-800/50 rounded-xl overflow-hidden border border-slate-700/50">
+                      <div className="bg-slate-800/80 px-4 py-3 border-b border-slate-700/50">
+                          <h3 className="text-amber-300 font-bold uppercase text-sm tracking-wider">{section.title}</h3>
+                      </div>
+                      <div className="divide-y divide-slate-700/50">
+                          {section.items.map((item, itemIdx) => (
+                              <div key={itemIdx} className="p-4 hover:bg-slate-700/30 transition-colors">
+                                  <div className="flex justify-between items-start mb-1">
+                                      <div className="flex-1 mr-4">
+                                        <p className="text-white font-semibold text-lg">{item.label}</p>
+                                        {item.original && (
+                                            <p className="text-slate-500 text-xs italic mb-1">{item.original}</p>
+                                        )}
+                                        {item.description && (
+                                            <p className="text-slate-400 text-sm leading-snug">{item.description}</p>
+                                        )}
+                                      </div>
+                                      <div className="text-right shrink-0">
+                                          <span className="block bg-slate-900 px-2 py-1 rounded text-cyan-400 font-mono font-bold text-sm">
+                                              {item.value}
+                                          </span>
+                                          <button 
+                                            onClick={() => playSmartTTS(item.label, targetLang)}
+                                            className="mt-2 text-slate-500 hover:text-white inline-block"
+                                          >
+                                              <Volume2 size={16} />
+                                          </button>
+                                      </div>
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+              ))}
+          </div>
+      );
+  };
+
   return (
     <div className="relative h-full w-full bg-black overflow-hidden flex flex-col">
       {/* Video Feed */}
@@ -246,7 +297,7 @@ const CameraView: React.FC = () => {
              <div className="w-16 h-16 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
              <Zap className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-blue-400 animate-pulse" size={24} />
           </div>
-          <p className="mt-4 text-blue-100 font-medium animate-pulse">Analyzing Scene...</p>
+          <p className="mt-4 text-blue-100 font-medium animate-pulse">Analyzing Structure...</p>
         </div>
       )}
 
@@ -290,32 +341,37 @@ const CameraView: React.FC = () => {
                 </p>
             </div>
 
-            {/* Detected Text */}
-            <div className="space-y-4 mb-6">
-               {analysisResult.detectedTexts.map((text, idx) => (
-                   <div key={idx} className="bg-white/5 border border-white/10 rounded-xl p-4">
-                       <div className="flex justify-between items-start mb-2">
-                           <span className="text-xs font-medium text-slate-400 uppercase">{text.language}</span>
-                           <button onClick={() => playSmartTTS(text.translation, targetLang)} className="text-cyan-400 hover:text-cyan-300">
-                               <Volume2 size={18} />
-                           </button>
-                       </div>
-                       <p className="text-2xl font-bold text-white mb-1">{text.translation}</p>
-                       <p className="text-sm text-slate-400 italic mb-3">"{text.original}"</p>
-                       {text.culturalNotes && (
-                           <div className="flex items-start gap-2 bg-blue-900/20 p-3 rounded-lg border border-blue-500/20">
-                               <Info size={16} className="text-blue-400 mt-0.5 shrink-0" />
-                               <p className="text-sm text-blue-100">{text.culturalNotes}</p>
+            {/* Structured Content (Menu/Table) OR Standard List */}
+            {analysisResult.structuredOutput && (analysisResult.structuredOutput.type === 'MENU' || analysisResult.structuredOutput.type === 'TABLE') ? (
+                renderStructuredMenu(analysisResult.structuredOutput)
+            ) : (
+                /* Standard Detected Text List */
+                <div className="space-y-4 mb-6">
+                   {analysisResult.detectedTexts.map((text, idx) => (
+                       <div key={idx} className="bg-white/5 border border-white/10 rounded-xl p-4">
+                           <div className="flex justify-between items-start mb-2">
+                               <span className="text-xs font-medium text-slate-400 uppercase">{text.language}</span>
+                               <button onClick={() => playSmartTTS(text.translation, targetLang)} className="text-cyan-400 hover:text-cyan-300">
+                                   <Volume2 size={18} />
+                               </button>
                            </div>
-                       )}
-                   </div>
-               ))}
-            </div>
+                           <p className="text-2xl font-bold text-white mb-1">{text.translation}</p>
+                           <p className="text-sm text-slate-400 italic mb-3">"{text.original}"</p>
+                           {text.culturalNotes && (
+                               <div className="flex items-start gap-2 bg-blue-900/20 p-3 rounded-lg border border-blue-500/20">
+                                   <Info size={16} className="text-blue-400 mt-0.5 shrink-0" />
+                                   <p className="text-sm text-blue-100">{text.culturalNotes}</p>
+                               </div>
+                           )}
+                       </div>
+                   ))}
+                </div>
+            )}
 
             {/* Suggestions & Search */}
-            <div className="space-y-4">
+            <div className="space-y-4 mt-8 pt-8 border-t border-white/10">
                 
-                {/* Google Search Queries - Using Anchor Tags for Reliable Linking */}
+                {/* Google Search Queries */}
                 {analysisResult.searchQueries && analysisResult.searchQueries.length > 0 && (
                     <div>
                         <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2 flex items-center gap-1">
