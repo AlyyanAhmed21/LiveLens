@@ -1,0 +1,8 @@
+{
+  "name": "LiveLens Translator",
+  "description": "Real-time multilingual AR translation assistant using Gemini 2.5 Flash and 3 Pro. Features camera translation, document analysis, and conversation bridging.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
